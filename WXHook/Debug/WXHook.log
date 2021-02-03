@@ -1,0 +1,8 @@
+﻿  pch.cpp
+  Dialog.cpp
+  dllmain.cpp
+  hook.cpp
+e:\sourcecode\wxpchook\wxhook\hook.cpp(61): warning C4405: “iRet”: 标识符是保留字
+  正在生成代码...
+e:\sourcecode\wxpchook\wxhook\hook.cpp(144): warning C4715: “IsUserLogin”: 不是所有的控件路径都返回值
+  WXHook.vcxproj -> E:\SourceCode\WxPcHook\WXHook\..\bin/WXHook.dll
