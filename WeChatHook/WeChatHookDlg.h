@@ -47,6 +47,8 @@ public:
 	// 浏览选取文件
 	afx_msg void OnBnClickedButton5();
 public:
+	void CString2Char(CString str, char ch[]);
+
 	// 寻找目标进程
 	PROCESSENTRY32 findTargetProcess(WCHAR* szProcessName);
 
@@ -56,6 +58,12 @@ public:
 	// 显示放在dll里
 	// void showQrPicture(WCHAR* szQRpath);
 
+	// 使用 ZwCreateThreadEx 实现远线程注入
+	BOOL ZwCreateThreadExInjectDll(DWORD dwProcessId, WCHAR *pszDllFileName);
+
+	// 提权
+	BOOL EnbalePrivileges(HANDLE hProcess, WCHAR *pszPrivilegesName);
+
 private:
 	// 组合框显示dll路径
 	CComboBox m_Combo;
@@ -64,4 +72,7 @@ public:
 	// 输出一些信息
 	CString m_OutPut;
 	CEdit m_Edit;
+	// 获取输入的进程id
+	CString m_EditPid;
+
 };

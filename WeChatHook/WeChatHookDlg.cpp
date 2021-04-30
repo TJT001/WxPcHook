@@ -86,6 +86,7 @@ void CWeChatHookDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_COMBO1, m_Combo);
 	DDX_Text(pDX, IDC_EDIT1, m_OutPut);
 	DDX_Control(pDX, IDC_EDIT1, m_Edit);
+	DDX_Text(pDX, IDC_EDITPID, m_EditPid);
 }
 
 BEGIN_MESSAGE_MAP(CWeChatHookDlg, CDialogEx)
@@ -111,7 +112,7 @@ BOOL CWeChatHookDlg::OnInitDialog()
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
 	ASSERT(IDM_ABOUTBOX < 0xF000);
 
-	SetWindowTextW(L"WeChatHook");
+	SetWindowTextW(L"远程线程注入工具");
 	SetDlgItemText(IDC_COMBO1, _T("选择要注入的DLL文件"));
 	SetDlgItemText(IDC_EDIT1, _T("启动路径例 E:\\SoftWare\\WeChat\\WeChat.exe"));
 	CMenu* pSysMenu = GetSystemMenu(FALSE);
@@ -190,6 +191,7 @@ HCURSOR CWeChatHookDlg::OnQueryDragIcon()
 // 注入
 void CWeChatHookDlg::OnBnClickedButton1()
 {
+	UpdateData(true);
 	// WCHAR szDLLPathName[MAX_PATH] = L"E:\\SourceCode\\WxPcHook\\bin\\WXHook.dll";
 	// WCHAR szAppPathName[MAX_PATH] = L"E:\\SoftWare\\WeChat\\WeChat.exe";
 	WCHAR szAppPathName[MAX_PATH] = { 0 };
@@ -210,7 +212,11 @@ void CWeChatHookDlg::OnBnClickedButton1()
 	//si.dwFlags = CREATE_NO_WINDOW;
 	si.wShowWindow = SW_HIDE;
 
-	bool ret = CreateProcess(NULL, szAppPathName, NULL, NULL, FALSE, PAGE_EXECUTE_READ, NULL, NULL, &si, &psInfo);
+	CString str;
+	GetDlgItem(IDC_EDITPID)->GetWindowTextW(str);
+	// psInfo.dwProcessId = (DWORD)str.GetBuffer();
+	psInfo.dwProcessId = _tcstoul(str, NULL, 10);
+	// bool ret = CreateProcess(NULL, szAppPathName, NULL, NULL, FALSE, PAGE_EXECUTE_READ, NULL, NULL, &si, &psInfo);
 	HANDLE hHandle = OpenProcess(PROCESS_ALL_ACCESS, NULL, psInfo.dwProcessId);
 
 	// HANDLE hHideWnd = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)hideWndow, NULL, 0, NULL);
@@ -218,7 +224,7 @@ void CWeChatHookDlg::OnBnClickedButton1()
 	LPVOID lpAddr = VirtualAllocEx(hHandle, NULL, MAX_PATH, MEM_COMMIT, PAGE_EXECUTE_READ);
 	if (lpAddr == NULL)
 	{
-		showDbgInfo(L"VirtualAllocEx申请失败||检查wx是否关闭", L"错误");
+		showDbgInfo(L"VirtualAllocEx申请失败||检查进程是否存在", L"错误");
 		return;
 	}
 	if (WriteProcessMemory(hHandle, lpAddr, szDLLPathName, MAX_PATH, NULL))
@@ -288,6 +294,155 @@ MODULEENTRY32 CWeChatHookDlg::findTargetModule(WCHAR * szModuleName, DWORD dwPro
 	}
 }
 
+BOOL CWeChatHookDlg::ZwCreateThreadExInjectDll(DWORD dwProcessId, WCHAR* pszDllFileName)
+{
+	HANDLE hProcess = NULL;
+	// SIZE_T dwSize = 0;
+	LPVOID pDllAddr = NULL;
+	FARPROC pFuncProcAddr = NULL;
+	HANDLE hRemoteThread = NULL;
+	DWORD dwStatus = 0;
+
+	// 打开注入进程，获取进程句柄
+	hProcess = ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcessId);
+	if (NULL == hProcess)
+	{
+		showDbgInfo(L"ZwCreateThreadExInject=>OpenProcess", L"错误");
+		return FALSE;
+	}
+
+	// 在注入进程中申请内存
+	// dwSize = 1 + ::strlen(pszDllFileName);
+	pDllAddr = ::VirtualAllocEx(hProcess, NULL, MAX_PATH, MEM_COMMIT, PAGE_READWRITE);
+	if (NULL == pDllAddr)
+	{
+		showDbgInfo(L"ZwCreateThreadExInject=>VirtualAllocEx", L"错误");
+		return FALSE;
+	}
+	// 向申请的内存中写入数据
+	if (FALSE == ::WriteProcessMemory(hProcess, pDllAddr, pszDllFileName, MAX_PATH, NULL))
+	{
+		DWORD dwRet = GetLastError();
+		CString str;
+		str.Format(L"%d", dwRet);
+		MessageBoxW(str, _T("提示"),MB_OK);
+		showDbgInfo(L"ZwCreateThreadExInject=>WriteProcessMemory", L"错误");
+		return FALSE;
+	}
+	// 加载 ntdll.dll
+	HMODULE hNtdllDll = ::LoadLibraryA("ntdll.dll");
+	if (NULL == hNtdllDll)
+	{
+		showDbgInfo(L"LoadLirbaryA", L"错误");
+		return FALSE;
+	}
+	// 获取LoadLibraryA函数地址
+	pFuncProcAddr = ::GetProcAddress(::GetModuleHandleA("Kernel32.dll"), "LoadLibraryW");
+	if (NULL == pFuncProcAddr)
+	{
+		showDbgInfo(L"ZwCreateThreadExInject=>GetProcAddress_LoadLibraryA", L"错误");
+		return FALSE;
+	}
+	// 获取ZwCreateThread函数地址
+#ifdef _WIN64
+	typedef DWORD(WINAPI *typedef_ZwCreateThreadEx)(
+		PHANDLE ThreadHandle,
+		ACCESS_MASK DesiredAccess,
+		LPVOID ObjectAttributes,
+		HANDLE ProcessHandle,
+		LPTHREAD_START_ROUTINE lpStartAddress,
+		LPVOID lpParameter,
+		ULONG CreateThreadFlags,
+		SIZE_T ZeroBits,
+		SIZE_T StackSize,
+		SIZE_T MaximumStackSize,
+		LPVOID pUnkown);
+#else
+	typedef DWORD(WINAPI *typedef_ZwCreateThreadEx)(
+		PHANDLE ThreadHandle,
+		ACCESS_MASK DesiredAccess,
+		LPVOID ObjectAttributes,
+		HANDLE ProcessHandle,
+		LPTHREAD_START_ROUTINE lpStartAddress,
+		LPVOID lpParameter,
+		BOOL CreateSuspended,
+		DWORD dwStackSize,
+		DWORD dw1,
+		DWORD dw2,
+		LPVOID pUnkown);
+#endif
+	typedef_ZwCreateThreadEx ZwCreateThreadEx = (typedef_ZwCreateThreadEx)::GetProcAddress(hNtdllDll, "ZwCreateThreadEx");
+	if (NULL == ZwCreateThreadEx)
+	{
+		showDbgInfo(L"ZwCreateThreadExInject=>GetProcAddress_ZwCreateThread", L"错误");
+		return FALSE;
+	}
+	// 使用 ZwCreateThreadEx 创建远线程, 实现 DLL 注入
+	dwStatus = ZwCreateThreadEx(&hRemoteThread, PROCESS_ALL_ACCESS, NULL, hProcess, (LPTHREAD_START_ROUTINE)pFuncProcAddr, pDllAddr, 0, 0, 0, 0, NULL);
+	if (NULL == hRemoteThread)
+	{
+		showDbgInfo(L"ZwCreateThreadExInject=>ZwCreateThreadEx", L"错误");
+		return FALSE;
+	}
+	// 关闭句柄
+	::CloseHandle(hProcess);
+	::FreeLibrary(hNtdllDll);
+
+	return TRUE;
+}
+
+BOOL CWeChatHookDlg::EnbalePrivileges(HANDLE hProcess, WCHAR * pszPrivilegesName)
+{
+	HANDLE hToken = NULL;
+	LUID luidValue = { 0 };
+	TOKEN_PRIVILEGES tokenPrivileges = { 0 };
+	BOOL bRet = FALSE;
+	DWORD dwRet = 0;
+
+
+	// 打开进程令牌并获取具有 TOKEN_ADJUST_PRIVILEGES 权限的进程令牌句柄
+	bRet = ::OpenProcessToken(hProcess, TOKEN_ADJUST_PRIVILEGES, &hToken);
+	if (FALSE == bRet)
+	{
+		showDbgInfo(L"EnbalePrivileges=>OpenProcessToken", L"错误");
+		return FALSE;
+	}
+	// 获取本地系统的 pszPrivilegesName 特权的LUID值
+	bRet = ::LookupPrivilegeValue(NULL, SE_SECURITY_NAME, &luidValue);
+	if (FALSE == bRet)
+	{
+		showDbgInfo(L"EnbalePrivileges=>LookupPrivilegeValue", L"错误");
+		return FALSE;
+	}
+	// 设置提升权限信息
+	tokenPrivileges.PrivilegeCount = 1;
+	tokenPrivileges.Privileges[0].Luid = luidValue;
+	tokenPrivileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	// 提升进程令牌访问权限
+	bRet = ::AdjustTokenPrivileges(hToken, FALSE, &tokenPrivileges, 0, NULL, NULL);
+	if (FALSE == bRet)
+	{
+		showDbgInfo(L"EnbalePrivileges=>AdjustTokenPrivileges", L"错误");
+		return FALSE;
+	}
+	else
+	{
+		// 根据错误码判断是否特权都设置成功
+		dwRet = ::GetLastError();
+		if (ERROR_SUCCESS == dwRet)
+		{
+			return TRUE;
+		}
+		else if (ERROR_NOT_ALL_ASSIGNED == dwRet)
+		{
+			showDbgInfo(L"EnbalePrivileges=>ERROR_NOT_ALL_ASSIGNED", L"错误");
+			return FALSE;
+		}
+	}
+
+	return FALSE;
+}
+
 
 //void CWeChatHookDlg::showQrPicture(WCHAR * szQRpath)
 //{
@@ -343,7 +498,7 @@ void CWeChatHookDlg::OnBnClickedButton2()
 
 void CWeChatHookDlg::OnBnClickedButton3()
 {
-	PROCESSENTRY32 processInfo = findTargetProcess(L"WeChat.exe");
+	/*PROCESSENTRY32 processInfo = findTargetProcess(L"WeChat.exe");
 	if (processInfo.szExeFile)
 	{
 		HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, false, processInfo.th32ProcessID);
@@ -359,7 +514,39 @@ void CWeChatHookDlg::OnBnClickedButton3()
 	else
 	{
 		showDbgInfo(L"findTargetProcess->未找到目标进程", L"提示");
-	}
+	}*/
+
+	UpdateData(true);
+
+	EnbalePrivileges(::GetCurrentProcess(), SE_DEBUG_NAME);
+
+	// WCHAR szDLLPathName[MAX_PATH] = L"E:\\SourceCode\\WxPcHook\\bin\\WXHook.dll";
+	// WCHAR szAppPathName[MAX_PATH] = L"E:\\SoftWare\\WeChat\\WeChat.exe";
+	char szAppPathName[MAX_PATH] = { 0 };
+	CStringW csAppPathName;
+	// WCHAR szAppPathName[MAX_PATH] = L"D:\\电脑软件\\WeChat\\WeChat.exe";
+	WCHAR szDLLPathName[MAX_PATH] = { };
+	// CString szDLLPathName;
+	m_Combo.GetLBText(0, szDLLPathName);
+	GetDlgItem(IDC_EDIT1)->GetWindowTextW(csAppPathName);
+	STARTUPINFO si = { 0 };
+	PROCESS_INFORMATION psInfo = { 0 };
+	ZeroMemory(&si, sizeof(si));
+	ZeroMemory(&psInfo, sizeof(psInfo));
+	si.cb = sizeof(si);
+	// si.dwFlags = STARTF_USESHOWWINDOW;
+	//si.dwFlags = CREATE_NO_WINDOW;
+	si.wShowWindow = SW_HIDE;
+
+	CString str;
+	GetDlgItem(IDC_EDITPID)->GetWindowTextW(str);
+	// psInfo.dwProcessId = (DWORD)str.GetBuffer();
+	psInfo.dwProcessId = _tcstoul(str, NULL, 10);
+	// CString2Char(szDLLPathName, szAppPathName);
+	// strcpy(szAppPathName, (char*)szDLLPathName.GetBuffer(szDLLPathName.GetLength()));
+
+	ZwCreateThreadExInjectDll(psInfo.dwProcessId, szDLLPathName);
+
 }
 
 void CWeChatHookDlg::OnBnClickedButton4()
@@ -409,4 +596,16 @@ void CWeChatHookDlg::OnBnClickedButton5()
 			SetDlgItemText(IDC_COMBO1, fileName);
 		}
 	}
+}
+
+void CWeChatHookDlg::CString2Char(CString str, char ch[])
+{
+	int i;
+	char *tmpch;
+	int wLen = WideCharToMultiByte(CP_ACP, 0, str, -1, NULL, 0, NULL, NULL);//得到Char的长度
+	tmpch = new char[wLen + 1];                                             //分配变量的地址大小
+	WideCharToMultiByte(CP_ACP, 0, str, -1, tmpch, wLen, NULL, NULL);       //将CString转换成char*
+
+	for (i = 0; tmpch[i] != '\0'; i++) ch[i] = tmpch[i];
+	ch[i] = '\0';
 }

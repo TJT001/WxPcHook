@@ -1,7 +1,6 @@
-﻿  WeChatHook.cpp
+﻿cl : 命令行 warning D9025: 正在重写“/sdl”(用“/GS-”)
   WeChatHookDlg.cpp
-e:\sourcecode\wxpchook\wechathook\wechathookdlg.cpp(203): warning C4477: “swprintf_s”: 格式字符串“%s”需要类型“wchar_t *”的参数，但可变参数 1 拥有了类型“CStringW”
-  正在生成代码...
-e:\sourcecode\wxpchook\wechathook\wechathookdlg.cpp(262): warning C4715: “CWeChatHookDlg::findTargetProcess”: 不是所有的控件路径都返回值
-e:\sourcecode\wxpchook\wechathook\wechathookdlg.cpp(289): warning C4715: “CWeChatHookDlg::findTargetModule”: 不是所有的控件路径都返回值
+e:\sourcecode\wxpchook\wechathook\wechathookdlg.cpp(205): warning C4477: “swprintf_s”: 格式字符串“%s”需要类型“wchar_t *”的参数，但可变参数 1 拥有了类型“CStringW”
+e:\sourcecode\wxpchook\wechathook\wechathookdlg.cpp(268): warning C4715: “CWeChatHookDlg::findTargetProcess”: 不是所有的控件路径都返回值
+e:\sourcecode\wxpchook\wechathook\wechathookdlg.cpp(295): warning C4715: “CWeChatHookDlg::findTargetModule”: 不是所有的控件路径都返回值
   WeChatHook.vcxproj -> E:\SourceCode\WxPcHook\WeChatHook\..\bin/WeChatHook.exe

@@ -167,6 +167,7 @@
     <ClInclude Include="hook.h" />
     <ClInclude Include="offsetAddr2.h" />
     <ClInclude Include="OffsetAddr3.h" />
+    <ClInclude Include="OffsetAddr3_2_1.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource1.h" />
   </ItemGroup>

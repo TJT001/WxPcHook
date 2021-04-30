@@ -4,11 +4,11 @@
 #define ISLOGIN		0x18A6290			// 0-->扫码  1-->正在登录 2-->已登录状态
 #define ISLOGINWXID 0x18A6290 + 0x4		// 登录成功存储 wxid_
 
-#define GOTOQRCODE1		0x258AB0			// 跳转到二维码界面;
-#define GOTOQRCODE2		0x398940
+#define GOTOQRCODE1		0x263C30			// 跳转到二维码界面;
+#define GOTOQRCODE2		0x3AD240
 // #define QRCODEWEB		0x178F9C0			// 二维码短链地址
-#define QRCODEPICTURE   0x25AC55			// hook的二维码图片地址
-#define QRCODEHOOKADDR  0x572380
+#define QRCODEPICTURE   0x265E3D			// hook的二维码图片地址
+#define QRCODEHOOKADDR  0x58B080
 
 /************** 一键备份 ****************/
 #define BACKUPSTR	0x14F17C8				// 按钮的名称字符

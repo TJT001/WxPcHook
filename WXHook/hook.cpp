@@ -38,7 +38,8 @@ DWORD showDbgInfo(const wchar_t * erorrInfo, const wchar_t * infoType)
 
 HMODULE getWeChatDLLAddr()
 {
-	HMODULE hModule = GetModuleHandleW(L"WeChatWin.dll");
+	HMODULE hModule = GetModuleHandleA("WeChatWin.dll");
+	// HMODULE hModule = GetModuleHandleW(L"wechat.exe"); E:\SoftWare\WeChat\WeChatWin.dll
 	if (hModule == NULL)
 	{
 		::MessageBoxW(NULL, L"getWeChatDLLAddr->找不到指定模块", L"提示", MB_OK);

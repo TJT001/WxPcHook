@@ -1,7 +1,7 @@
 #pragma once
 #include "framework.h"
 // #include "OffsetAddr2.9.5.h"
-#include "OffsetAddr3.h"
+#include "OffsetAddr3_2_1.h"
 
 
 DWORD showDbgInfo(const wchar_t* erorrInfo, const wchar_t* infoType);

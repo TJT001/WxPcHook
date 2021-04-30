@@ -45,6 +45,9 @@
     <ClInclude Include="resource1.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="OffsetAddr3_2_1.h">
+      <Filter>偏移</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
